@@ -528,9 +528,20 @@
             let currentIndex = hourly.time.findIndex(t => t.startsWith(nowISO));
             if (currentIndex === -1) currentIndex = new Date().getHours(); 
 
-            updateWeatherColumn(hourly, currentIndex, 0, 'icon0', 'temp0');
-            updateWeatherColumn(hourly, currentIndex + 6, 6, 'icon6', 'temp6', 'label6');
-            updateWeatherColumn(hourly, currentIndex + 12, 12, 'icon12', 'temp12', 'label12');
+            // Calculate Labels ensuring uniqueness
+            let label1 = getRelativeTimeLabel(new Date(new Date().setHours(new Date().getHours() + 6)));
+            let label2 = getRelativeTimeLabel(new Date(new Date().setHours(new Date().getHours() + 12)));
+
+            // Prevent duplicate labels if relative times overlap (e.g. evening -> evening)
+            if (label2 === label1) {
+                // If they match, bump the second one to the next logical period
+                label2 = getNextPeriodLabel(label1);
+            }
+
+            // Update Columns
+            updateWeatherColumn(hourly, currentIndex, 'icon0', 'temp0'); // Now
+            updateWeatherColumn(hourly, currentIndex + 6, 'icon6', 'temp6', 'label6', label1);
+            updateWeatherColumn(hourly, currentIndex + 12, 'icon12', 'temp12', 'label12', label2);
 
             const now = new Date();
             document.getElementById('wLastUpdated').textContent = "Updated: " + now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
@@ -542,7 +553,7 @@
         }
     }
 
-    function updateWeatherColumn(hourlyData, index, offsetHours, iconId, tempId, labelId = null) {
+    function updateWeatherColumn(hourlyData, index, iconId, tempId, labelId = null, labelText = "") {
         if (index >= hourlyData.time.length) return;
 
         const code = hourlyData.weathercode[index];
@@ -552,31 +563,35 @@
         document.getElementById(tempId).textContent = `${temp}°`;
 
         if (labelId) {
-            const targetDate = new Date();
-            targetDate.setHours(targetDate.getHours() + offsetHours);
-            document.getElementById(labelId).textContent = getRelativeTimeLabel(targetDate);
+            document.getElementById(labelId).textContent = labelText;
         }
     }
 
+    // New smart relative label generator
     function getRelativeTimeLabel(dateObj) {
         const now = new Date();
         const hour = dateObj.getHours();
         const isTomorrow = dateObj.getDate() !== now.getDate();
 
-        let period = "Morning";
+        let period = "Morning"; 
         
         if (hour >= 12 && hour < 17) period = "Afternoon";
-        else if (hour >= 17 && hour < 21) period = "Evening";
-        else if (hour >= 21 || hour < 5) period = "Night"; 
+        else if (hour >= 17) period = "Evening";
 
-        if (!isTomorrow && period === "Night") return "Tonight";
-
-        if (isTomorrow) {
-            if (hour < 12) return "Tom. Morning";
-            return `Tom. ${period === "Afternoon" ? "Aft" : period}`;
-        }
+        // "This" or "Tmrw"
+        const prefix = isTomorrow ? "Tmrw" : "This";
         
-        return `This ${period === "Afternoon" ? "Aft" : period}`;
+        return `${prefix} ${period}`;
+    }
+
+    // Force bump next period to prevent duplicates
+    function getNextPeriodLabel(currentLabel) {
+        const sequence = ["This Morning", "This Afternoon", "This Evening", "Tmrw Morning", "Tmrw Afternoon", "Tmrw Evening"];
+        const idx = sequence.indexOf(currentLabel);
+        if (idx !== -1 && idx < sequence.length - 1) {
+            return sequence[idx + 1];
+        }
+        return "Later"; // Fallback
     }
 
     function getWeatherIcon(code) {
