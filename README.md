@@ -20,13 +20,13 @@ To provide a **"Cognitive Accessibility"** focused experience. It prioritizes le
 
 ---
 
-## 📖 Detailed Information
-
-### 🚀 Setup Guide
+## 🚀 Setup Guide
 
 1.  **Download:** Get the `index.html` file from this repository.
 2.  **Open:** Double-click the file to open it in your browser (Chrome, Edge, Firefox, Safari).
 3.  **Set as Homepage:** Go to your browser settings and set this file as your "On Startup" page. Now, your personal dashboard will load every time you open the internet.
+
+## 📖 Detailed Information
 
 ### 🛠️ Feature Breakdown
 
