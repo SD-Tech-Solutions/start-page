@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD Tech Dashboard</title>
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --bg-left: #1a1a1a;
+            --bg-right: #222222;
+            --card-bg: #2d2d2d;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --accent: #4CAF50;
+            --danger: #ff4444;
+            --note-yellow: #fef65b;
+            --note-blue: #aeddec;
+            --note-green: #ccf2a7;
+            --note-purple: #e2d1f3;
+        }
+
+        /* --- LAYOUT RESET --- */
+        body, html {
+            height: 100%; margin: 0; padding: 0; overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-left); color: var(--text-main);
+        }
+        #app-container {
+            display: flex; height: 100vh; width: 100vw;
+        }
+
+        /* ====== LEFT PANEL STRUCTURE ====== */
+        #left-panel {
+            width: 450px; min-width: 350px;
+            background: var(--bg-left);
+            display: flex; flex-direction: column;
+            border-right: 2px solid #333;
+            box-sizing: border-box; height: 100%;
+        }
+
+        /* 1. HEADER (Fixed) */
+        .lp-header { padding: 30px 30px 10px 30px; text-align: center; flex-shrink: 0; }
+        #clock { font-size: 4rem; font-weight: 700; line-height: 1; }
+        #date { font-size: 1.4rem; color: var(--text-muted); margin-top: 5px; }
+        #greeting { font-size: 1.3rem; color: #ffd700; margin-bottom: 5px; }
+
+        /* 2. SCROLLABLE CONTENT AREA (Middle) */
+        .lp-content {
+            flex-grow: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 10px 30px; display: flex; flex-direction: column;
+        }
+        .lp-content::-webkit-scrollbar { width: 8px; }
+        .lp-content::-webkit-scrollbar-track { background: transparent; }
+        .lp-content::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .lp-content::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* --- WEATHER WIDGET --- */
+        #weather-widget {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px; padding: 15px;
+            margin-bottom: 30px; text-align: center;
+            border: 1px solid #333; transition: border-color 0.2s;
+            position: relative;
+        }
+        #weather-widget:hover { border-color: #555; }
+        
+        .w-header-row {
+            display: flex; justify-content: center; align-items: center;
+            position: relative; margin-bottom: 10px;
+        }
+        .w-loc-header {
+            font-size: 1rem; color: var(--text-muted); cursor: pointer; 
+            text-decoration: underline; text-decoration-style: dotted;
+            font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .w-loc-header:hover { color: var(--accent); }
+        
+        .w-refresh-container {
+            position: absolute; right: 0; top: 0;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .w-time-label { font-size: 0.7rem; color: #666; }
+        .w-refresh-btn {
+            background: none; border: none; color: #666; 
+            font-size: 1.2rem; cursor: pointer; padding: 0; line-height: 1;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .w-refresh-btn:hover { color: var(--text-main); transform: rotate(45deg); }
+
+        .w-grid {
+            display: flex; justify-content: space-around; align-items: flex-start;
+            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;
+        }
+        .w-col {
+            display: flex; flex-direction: column; align-items: center; gap: 5px; width: 33%;
+        }
+        
+        .w-label { font-size: 0.75rem; color: #888; text-transform: uppercase; font-weight: bold; height: 20px;}
+        .w-icon { font-size: 1.8rem; line-height: 1; }
+        .w-temp { font-size: 1.2rem; font-weight: bold; color: white; }
+
+        .weather-setup input {
+            padding: 8px; width: 100px; border-radius: 4px; border: 1px solid #555;
+            background: #222; color: white; text-align: center;
+        }
+        .weather-setup button {
+            padding: 8px 12px; border: none; border-radius: 4px; 
+            background: var(--accent); color: white; cursor: pointer; font-weight: bold;
+        }
+        .weather-display { display: none; flex-direction: column; gap: 5px; }
+
+        /* Search Bar */
+        .search-container { width: 100%; margin-bottom: 30px; flex-shrink: 0; }
+        form { display: flex; gap: 10px; }
+        input[type="text"] { 
+            flex-grow: 1; font-size: 1.2rem; padding: 12px; 
+            border-radius: 8px; border: 2px solid #444; background: #333; color: white; outline: none;
+        }
+        button.search-btn { 
+            font-size: 1.2rem; padding: 12px 25px; 
+            background-color: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+
+        /* Link Grid */
+        .grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+            gap: 15px; width: 100%; padding-bottom: 20px;
+        }
+
+        .link-card {
+            background-color: var(--card-bg); padding: 15px 10px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; height: 110px; border: 2px solid transparent;
+            transition: all 0.2s ease; cursor: pointer; text-decoration: none; color: var(--text-main);
+            box-sizing: border-box;
+        }
+        .link-card:hover { transform: translateY(-3px); border-color: var(--accent); background: #383838;}
+        .card-icon { width: 40px; height: 40px; margin-bottom: 10px; border-radius: 50%; background: #fff; padding: 4px; object-fit: contain; }
+        .card-title { font-size: 0.9rem; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        
+        .delete-link-btn { 
+            position: absolute; top: -8px; right: -8px; 
+            background: var(--danger); color: white; border: 2px solid var(--bg-left); 
+            border-radius: 50%; width: 24px; height: 24px; 
+            font-weight: bold; cursor: pointer; display: none; 
+            align-items: center; justify-content: center; font-size: 14px; z-index: 2;
+        }
+        .link-card:hover .delete-link-btn { display: flex; }
+        
+        .link-card.add-new { border: 2px dashed #666; background: transparent; }
+        .link-card.add-new:hover { border-color: var(--accent); background: #222; }
+        .plus-sign { font-size: 2rem; color: #888; }
+        .add-text { color: #fff; font-weight: bold; }
+
+        /* 3. FOOTER (Fixed Bottom) */
+        .lp-footer {
+            flex-shrink: 0; padding: 15px 30px;
+            background: #151515; border-top: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;
+        }
+        .branding-link {
+            display: flex; align-items: center; gap: 10px; 
+            text-decoration: none; color: white; font-weight: bold; transition: opacity 0.2s;
+        }
+        .branding-link:hover { opacity: 0.8; }
+        .branding-logo { width: 32px; height: 32px; border-radius: 4px; }
+        .email-link { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+        .email-link:hover { color: var(--accent); text-decoration: underline; }
+
+        /* ====== RIGHT PANEL (Sticky Notes) ====== */
+        #right-panel {
+            flex-grow: 1; background-color: var(--bg-right);
+            position: relative; overflow: hidden; 
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Note Controls */
+        .note-controls {
+            position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100;
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 30px; backdrop-filter: blur(5px);
+        }
+        .control-btn {
+            padding: 8px 15px; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; color: #222; transition: transform 0.1s;
+        }
+        .control-btn:active { transform: scale(0.95); }
+        .btn-s { background: var(--note-yellow); }
+        .btn-m { background: var(--note-blue); }
+        .btn-l { background: var(--note-green); }
+
+        /* --- THE DOCK & TRASH LAYOUT --- */
+        #trash-dropzone {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 70px; height: 70px; background: #333;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 30px; cursor: pointer; border: 3px solid #555;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 90;
+        }
+        #trash-dropzone.drag-over { transform: scale(1.2) rotate(-10deg); border-color: var(--danger); color: var(--danger); background: #411; }
+        #trash-dropzone:hover { border-color: #888; }
+
+        /* Minimized Notes Dock */
+        #minimized-dock {
+            position: absolute; bottom: 20px; right: 100px;
+            height: 70px; display: flex; flex-direction: row-reverse;
+            gap: 15px; align-items: flex-end; z-index: 80; padding-right: 15px;
+            pointer-events: none;
+        }
+
+        .dock-item {
+            width: 50px; height: 50px;
+            border-radius: 8px; border: 2px solid rgba(0,0,0,0.2);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer; pointer-events: auto; 
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .dock-item:hover { width: 120px; height: 120px; transform: translateY(-10px); z-index: 100; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .dock-item::after {
+            content: ''; position: absolute; top: 0; right: 0;
+            border-width: 0 15px 15px 0; border-style: solid;
+            border-color: rgba(0,0,0,0.2) #fff; border-bottom-left-radius: 5px;
+            transition: opacity 0.2s;
+        }
+        .dock-item:hover::after { opacity: 0; }
+        .dock-text {
+            opacity: 0; font-size: 0.8rem; color: #222; padding: 10px; text-align: center;
+            overflow: hidden; font-family: 'Comic Sans MS', sans-serif;
+            transition: opacity 0.2s 0.1s; pointer-events: none; max-height: 100%; width: 100%;
+        }
+        .dock-item:hover .dock-text { opacity: 1; }
+
+        /* --- THE STICKY NOTE --- */
+        .note {
+            position: absolute; width: 200px; height: 200px; 
+            background-color: var(--note-yellow); color: #222;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column;
+            transition: box-shadow 0.2s; border-radius: 2px;
+            touch-action: none;
+        }
+        .note.is-dragging {
+            box-shadow: 15px 15px 25px rgba(0,0,0,0.5);
+            transform: scale(1.05); transition: none !important; z-index: 9999 !important; cursor: grabbing;
+        }
+        .note-header {
+            height: 32px; background: rgba(0,0,0,0.05); cursor: grab;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 5px 0 10px; flex-shrink: 0;
+        }
+        .note-header:active { cursor: grabbing; }
+        .drag-handle-icon { color: #444; font-size: 16px; font-weight: 900; letter-spacing: 2px; opacity: 0.8; margin-right: 10px; }
+        .note-title-text {
+            flex-grow: 1; font-weight: bold; font-size: 0.9rem; color: #444;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            pointer-events: none; opacity: 0.85; margin-right: 10px;
+        }
+        .header-actions { display: flex; gap: 5px; align-items: center; }
+        .header-btn {
+            background: none; border: none; font-weight: bold; cursor: pointer;
+            width: 24px; height: 24px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            color: #444; transition: background 0.1s;
+        }
+        .header-btn:hover { background: rgba(0,0,0,0.1); }
+        .trash-btn svg { stroke: #333; transition: stroke 0.2s; }
+        .header-btn.trash-btn:hover { background: rgba(255,0,0,0.1); }
+        .header-btn.trash-btn:hover svg { stroke: #d00; }
+        
+        .note-menu-dropdown {
+            position: absolute; bottom: 100%; right: 0; margin-bottom: 8px;
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-radius: 4px;
+            display: none; flex-direction: column; width: 100px; z-index: 20; padding: 5px;
+        }
+        .note-menu-dropdown.active { display: flex; }
+        .color-picker-row { display: flex; gap: 5px; padding: 5px; justify-content: center; }
+        .color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);}
+        
+        .note-content {
+            flex-grow: 1; width: 100%; border: none; resize: none;
+            background: transparent; padding: 10px;
+            font-family: 'Comic Sans MS', 'Segoe UI Marker', monospace;
+            font-size: 1.1rem; color: #222; outline: none; box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .note-content::-webkit-scrollbar { width: 6px; }
+        .note-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+        
+        /* NOTE METADATA FOOTER */
+        .note-meta {
+            font-size: 0.65rem; color: rgba(0,0,0,0.5);
+            text-align: right; padding: 0 25px 5px 5px; /* Right padding ensures clearance of resize handle */
+            line-height: 1.2; font-family: sans-serif;
+            pointer-events: none; flex-shrink: 0;
+        }
+
+        .resize-handle {
+            position: absolute; bottom: 0; right: 0; width: 20px; height: 20px;
+            cursor: nwse-resize; color: rgba(0,0,0,0.3);
+            display: flex; justify-content: flex-end; align-items: flex-end;
+            padding: 2px; font-size: 14px; line-height: 1;
+        }
+
+        /* ====== MODALS ====== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal { background: #333; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; border: 2px solid #555; }
+        .modal h2 { margin-top: 0; color: white; }
+        .modal input { width: 100%; padding: 12px; margin: 10px 0 20px 0; border-radius: 5px; border: 1px solid #555; background: #444; color: white; box-sizing: border-box;}
+        .modal-buttons { display: flex; gap: 15px; justify-content: flex-end; }
+        .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+        .btn-cancel { background: #666; color: white; }
+        .btn-save { background: var(--accent); color: white; }
+        
+        #trashList { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
+        .trashed-item { background: #444; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;}
+        .trashed-item span { max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .trash-actions button { margin-left: 5px; padding: 5px 10px; font-size: 0.8rem;}
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            #app-container { flex-direction: column; overflow-y: auto; }
+            #left-panel { width: 100%; height: auto; border-right: none; border-bottom: 2px solid #333; }
+            #right-panel { height: 600px; flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <section id="left-panel">
+        <div class="lp-header">
+            <div id="greeting">Hello</div>
+            <div id="clock">00:00</div>
+            <div id="date">Loading...</div>
+        </div>
+
+        <div class="lp-content">
+            <div id="weather-widget">
+                <div class="weather-setup" id="weatherSetup">
+                    <p style="margin: 0 0 10px 0; color: #888; font-size: 0.9rem;">Enter Zip Code for Weather</p>
+                    <input type="text" id="zipInput" placeholder="Zip Code" maxlength="5">
+                    <button onclick="saveZip()">Go</button>
+                </div>
+                
+                <div class="weather-display" id="weatherDisplay">
+                    <div class="w-header-row">
+                        <div class="w-loc-header" id="wLoc" onclick="resetZip()" title="Click to change location">Location</div>
+                        <div class="w-refresh-container">
+                            <span class="w-time-label" id="wLastUpdated">Updated: --</span>
+                            <button class="w-refresh-btn" onclick="loadWeather()" title="Refresh">↻</button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-grid">
+                        <div class="w-col">
+                            <div class="w-label">Now</div>
+                            <div class="w-icon" id="icon0"></div>
+                            <div class="w-temp" id="temp0">--°</div>
+                        </div>
+                        <div class="w-col">
+                            <div class="w-label" id="label6">Later</div>
+                            <div class="w-icon" id="icon6"></div>
+                            <div class="w-temp" id="temp6">--°</div>
+                        </div>
+                        <div class="w-col">
+                            <div class="w-label" id="label12">Later</div>
+                            <div class="w-icon" id="icon12"></div>
+                            <div class="w-temp" id="temp12">--°</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <form action="https://www.google.com/search" method="get" target="_blank">
+                    <input type="text" name="q" placeholder="Search Google..." aria-label="Search">
+                    <button type="submit" class="search-btn">Search</button>
+                </form>
+            </div>
+            <div class="grid" id="linkGrid"></div>
+        </div>
+
+        <div class="lp-footer">
+            <a href="https://sd-tech-solutions.com" target="_blank" class="branding-link">
+                <img src="https://www.google.com/s2/favicons?domain=sd-tech-solutions.com&sz=128" alt="Logo" class="branding-logo">
+                <span>SD Tech Solutions</span>
+            </a>
+            <a href="mailto:contact@sd-tech-solutions.com" class="email-link">contact@sd-tech-solutions.com</a>
+        </div>
+    </section>
+
+    <section id="right-panel">
+        <div class="note-controls">
+            <span>New Note: </span>
+            <button class="control-btn btn-s" onclick="createNote('small')">S</button>
+            <button class="control-btn btn-m" onclick="createNote('medium')">M</button>
+            <button class="control-btn btn-l" onclick="createNote('large')">L</button>
+        </div>
+        <div id="note-canvas"></div>
+        <div id="minimized-dock"></div>
+        <div id="trash-dropzone" title="Drag notes here to trash, click to open trash">🗑️</div>
+    </section>
+</div>
+
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <h2>Add Website</h2>
+        <input type="text" id="siteName" placeholder="Name">
+        <input type="text" id="siteUrl" placeholder="Address">
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeAddModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveNewLink()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="trashModal">
+    <div class="modal" style="max-width: 500px;">
+        <h2>Trash Can</h2>
+        <div id="trashList"><p style="color: #999">Trash is empty.</p></div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="toggleTrashModal(false)">Close</button>
+            <button class="btn" style="background: var(--danger); color: white;" onclick="emptyTrash()">Empty Trash Forever</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===========================
+    // 1. STATE & CONFIG
+    // ===========================
+    const LINKS_KEY = 'dash_links_v4'; 
+    const NOTES_KEY = 'dash_notes_v16'; // Bumped version for timestamps
+    const ZIP_KEY = 'dash_zip_v1';
+
+    let linksData = [];
+    let notesData = [];
+    let noteZIndexCounter = 100;
+
+    // ===========================
+    // 2. INITIALIZATION
+    // ===========================
+    function init() {
+        loadData();
+        renderLinks();
+        renderNotes();
+        startClock();
+        setupEventListeners();
+        loadWeather(); 
+    }
+
+    function loadData() {
+        const storedLinks = localStorage.getItem(LINKS_KEY);
+        linksData = storedLinks ? JSON.parse(storedLinks) : [
+            { title: "Google", url: "https://google.com" },
+            { title: "YouTube", url: "https://youtube.com" },
+            { title: "Weather", url: "https://weather.com" }
+        ];
+
+        const storedNotes = localStorage.getItem(NOTES_KEY);
+        notesData = storedNotes ? JSON.parse(storedNotes) : [];
+        if (notesData.length > 0) {
+            noteZIndexCounter = Math.max(...notesData.map(n => n.zIndex || 100)) + 1;
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(LINKS_KEY, JSON.stringify(linksData));
+        localStorage.setItem(NOTES_KEY, JSON.stringify(notesData));
+    }
+
+    // ===========================
+    // 3. WEATHER WIDGET LOGIC
+    // ===========================
+    function loadWeather() {
+        const zip = localStorage.getItem(ZIP_KEY);
+        if (zip) {
+            document.getElementById('weatherSetup').style.display = 'none';
+            document.getElementById('weatherDisplay').style.display = 'flex';
+            fetchWeatherData(zip);
+        } else {
+            document.getElementById('weatherSetup').style.display = 'block';
+            document.getElementById('weatherDisplay').style.display = 'none';
+        }
+    }
+
+    function saveZip() {
+        const zip = document.getElementById('zipInput').value;
+        if(zip && zip.length === 5) {
+            localStorage.setItem(ZIP_KEY, zip);
+            loadWeather();
+        } else {
+            alert("Please enter a valid 5-digit Zip Code.");
+        }
+    }
+
+    function resetZip() {
+        if(confirm("Change location?")) {
+            localStorage.removeItem(ZIP_KEY);
+            loadWeather();
+        }
+    }
+
+    async function fetchWeatherData(zip) {
+        document.getElementById('wLastUpdated').textContent = "Updating...";
+        
+        try {
+            const geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
+            if(!geoRes.ok) throw new Error("Invalid Zip");
+            const geoData = await geoRes.json();
+            const lat = geoData.places[0].latitude;
+            const lon = geoData.places[0].longitude;
+            const city = geoData.places[0]['place name'];
+
+            document.getElementById('wLoc').textContent = city;
+
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=auto`);
+            const weatherData = await weatherRes.json();
+            
+            const nowISO = new Date().toISOString().slice(0, 13);
+            const hourly = weatherData.hourly;
+            let currentIndex = hourly.time.findIndex(t => t.startsWith(nowISO));
+            if (currentIndex === -1) currentIndex = new Date().getHours(); 
+
+            updateWeatherColumn(hourly, currentIndex, 0, 'icon0', 'temp0');
+            updateWeatherColumn(hourly, currentIndex + 6, 6, 'icon6', 'temp6', 'label6');
+            updateWeatherColumn(hourly, currentIndex + 12, 12, 'icon12', 'temp12', 'label12');
+
+            const now = new Date();
+            document.getElementById('wLastUpdated').textContent = "Updated: " + now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('wLoc').textContent = "Error";
+            document.getElementById('wLastUpdated').textContent = "Failed";
+        }
+    }
+
+    function updateWeatherColumn(hourlyData, index, offsetHours, iconId, tempId, labelId = null) {
+        if (index >= hourlyData.time.length) return;
+
+        const code = hourlyData.weathercode[index];
+        const temp = Math.round(hourlyData.temperature_2m[index]);
+        
+        document.getElementById(iconId).textContent = getWeatherIcon(code);
+        document.getElementById(tempId).textContent = `${temp}°`;
+
+        if (labelId) {
+            const targetDate = new Date();
+            targetDate.setHours(targetDate.getHours() + offsetHours);
+            document.getElementById(labelId).textContent = getRelativeTimeLabel(targetDate);
+        }
+    }
+
+    function getRelativeTimeLabel(dateObj) {
+        const now = new Date();
+        const hour = dateObj.getHours();
+        const isTomorrow = dateObj.getDate() !== now.getDate();
+
+        let period = "Morning";
+        
+        if (hour >= 12 && hour < 17) period = "Afternoon";
+        else if (hour >= 17 && hour < 21) period = "Evening";
+        else if (hour >= 21 || hour < 5) period = "Night"; 
+
+        if (!isTomorrow && period === "Night") return "Tonight";
+
+        if (isTomorrow) {
+            if (hour < 12) return "Tom. Morning";
+            return `Tom. ${period === "Afternoon" ? "Aft" : period}`;
+        }
+        
+        return `This ${period === "Afternoon" ? "Aft" : period}`;
+    }
+
+    function getWeatherIcon(code) {
+        if (code === 0) return "☀️";
+        if (code >= 1 && code <= 3) return "⛅";
+        if (code === 45 || code === 48) return "🌫️";
+        if (code >= 51 && code <= 67) return "🌧️";
+        if (code >= 71 && code <= 77) return "❄️";
+        if (code >= 80 && code <= 82) return "🌦️";
+        if (code >= 95) return "⚡";
+        return "🌡️";
+    }
+
+    // ===========================
+    // 4. CLOCK & LINKS
+    // ===========================
+    function startClock() {
+        function update() {
+            const now = new Date();
+            let hours = now.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            document.getElementById('clock').textContent = `${hours}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`;
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            const h = now.getHours();
+            document.getElementById('greeting').textContent = h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
+        }
+        update(); setInterval(update, 1000);
+    }
+
+    function renderLinks() {
+        const grid = document.getElementById('linkGrid');
+        grid.innerHTML = '';
+        linksData.forEach((link, index) => {
+            let cleanUrl = link.url.startsWith('http') ? link.url : 'https://' + link.url;
+            const iconUrl = `https://www.google.com/s2/favicons?domain=${cleanUrl}&sz=64`;
+            const card = document.createElement('a');
+            card.className = 'link-card';
+            card.href = cleanUrl;
+            card.innerHTML = `
+                <button class="delete-link-btn" data-idx="${index}">X</button>
+                <img src="${iconUrl}" class="card-icon" onerror="this.src='https://via.placeholder.com/40'">
+                <span class="card-title">${link.title}</span>
+            `;
+            card.querySelector('.delete-link-btn').addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if(confirm('Delete this link?')) { linksData.splice(index, 1); saveData(); renderLinks(); }
+            });
+            grid.appendChild(card);
+        });
+        const addBtn = document.createElement('div');
+        addBtn.className = 'link-card add-new';
+        addBtn.innerHTML = '<span class="plus-sign">+</span><span class="card-title add-text">Add Website</span>';
+        addBtn.onclick = () => document.getElementById('addModal').style.display = 'flex';
+        grid.appendChild(addBtn);
+    }
+    function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+    function saveNewLink() {
+        const name = document.getElementById('siteName').value;
+        let url = document.getElementById('siteUrl').value;
+        if (name && url) {
+            if (!url.startsWith('http')) url = 'https://' + url;
+            linksData.push({ title: name, url: url });
+            saveData(); renderLinks(); closeAddModal();
+        }
+    }
+
+    // ===========================
+    // 5. NOTES & DRAG LOGIC
+    // ===========================
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+    function createNote(sizePref) {
+        let width = 300, height = 300, color = 'var(--note-blue)'; 
+        if (sizePref === 'small') { width = 225; height = 225; color = 'var(--note-yellow)'; }
+        if (sizePref === 'large') { width = 450; height = 450; color = 'var(--note-green)'; }
+
+        const canvas = document.getElementById('right-panel');
+        const startX = (canvas.clientWidth / 2) - (width/2) + (Math.random() * 40 - 20);
+        const startY = (canvas.clientHeight / 2) - (height/2) + (Math.random() * 40 - 20);
+
+        const newNote = {
+            id: generateId(), content: '',
+            x: startX, y: startY, w: width, h: height,
+            color: color, zIndex: noteZIndexCounter++, status: 'active',
+            created: Date.now(), updated: Date.now()
+        };
+        notesData.push(newNote);
+        saveData();
+        renderNotes();
+    }
+
+    function renderNotes() {
+        const canvas = document.getElementById('note-canvas');
+        const dock = document.getElementById('minimized-dock');
+        canvas.innerHTML = '';
+        dock.innerHTML = '';
+
+        notesData.forEach(noteData => {
+            if (noteData.status === 'active') {
+                canvas.appendChild(buildNoteElement(noteData));
+            } else if (noteData.status === 'minimized') {
+                dock.appendChild(buildDockElement(noteData));
+            }
+        });
+    }
+
+    function buildNoteElement(data) {
+        const el = document.createElement('div');
+        el.className = 'note';
+        el.id = data.id;
+        el.style.width = data.w + 'px';
+        el.style.height = data.h + 'px';
+        el.style.transform = `translate(${data.x}px, ${data.y}px)`;
+        el.style.backgroundColor = data.color;
+        el.style.zIndex = data.zIndex;
+
+        const titleText = data.content ? data.content.split('\n')[0] : "New Note";
+        const trashSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
+        // Handle timestamps for legacy notes
+        if (!data.created) data.created = Date.now();
+        if (!data.updated) data.updated = Date.now();
+
+        const formatDate = (ts) => new Date(ts).toLocaleDateString();
+        const formatTime = (ts) => new Date(ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        el.innerHTML = `
+            <div class="note-header">
+                <span class="drag-handle-icon">::::</span>
+                <span class="note-title-text">${titleText}</span>
+                <div class="header-actions">
+                    <button class="header-btn" title="Minimize" onclick="minimizeNote('${data.id}')">_</button>
+                    <button class="header-btn trash-btn" title="Delete" onclick="trashNote('${data.id}')">${trashSvg}</button>
+                    <div class="menu-trigger" onclick="toggleNoteMenu('${data.id}')">•••
+                        <div class="note-menu-dropdown" id="menu-${data.id}">
+                            <div class="color-picker-row">
+                                <div class="color-dot" style="background:var(--note-yellow)" onclick="setNoteColor('${data.id}', 'var(--note-yellow)')"></div>
+                                <div class="color-dot" style="background:var(--note-blue)" onclick="setNoteColor('${data.id}', 'var(--note-blue)')"></div>
+                                <div class="color-dot" style="background:var(--note-green)" onclick="setNoteColor('${data.id}', 'var(--note-green)')"></div>
+                                <div class="color-dot" style="background:var(--note-purple)" onclick="setNoteColor('${data.id}', 'var(--note-purple)')"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <textarea class="note-content">${data.content}</textarea>
+            <div class="note-meta">
+                <div>Created: ${formatDate(data.created)}</div>
+                <div id="meta-update-${data.id}">Updated: ${formatTime(data.updated)}</div>
+            </div>
+            <div class="resize-handle">◢</div>
+        `;
+
+        el.querySelector('textarea').addEventListener('input', (e) => {
+            data.content = e.target.value;
+            data.updated = Date.now();
+            const firstLine = e.target.value.split('\n')[0] || "New Note";
+            el.querySelector('.note-title-text').textContent = firstLine;
+            // Update time visually immediately
+            el.querySelector(`#meta-update-${data.id}`).textContent = 'Updated: ' + formatTime(data.updated);
+            saveDataDebounced();
+        });
+        
+        el.addEventListener('mousedown', () => {
+            if(data.zIndex !== noteZIndexCounter - 1) {
+                data.zIndex = noteZIndexCounter++;
+                el.style.zIndex = data.zIndex;
+                saveData();
+            }
+        });
+        return el;
+    }
+
+    function buildDockElement(data) {
+        const el = document.createElement('div');
+        el.className = 'dock-item';
+        el.style.backgroundColor = data.color;
+        let previewText = "(Empty)";
+        if (data.content && data.content.trim().length > 0) {
+            const firstLine = data.content.split('\n')[0];
+            previewText = firstLine.substring(0, 25);
+            if(firstLine.length > 25) previewText += "...";
+        }
+        el.title = previewText;
+        el.onclick = () => restoreFromDock(data.id);
+        el.innerHTML = `<div class="dock-text">${previewText}</div>`;
+        return el;
+    }
+
+    function restoreFromDock(id) {
+        const note = notesData.find(n => n.id === id);
+        if(note) { note.status = 'active'; note.zIndex = noteZIndexCounter++; saveData(); renderNotes(); }
+    }
+    function minimizeNote(id) {
+        const note = notesData.find(n => n.id === id);
+        if(note) { note.status = 'minimized'; saveData(); renderNotes(); }
+    }
+    function toggleNoteMenu(id) {
+        const menu = document.getElementById('menu-' + id);
+        const active = document.querySelector('.note-menu-dropdown.active');
+        if(active && active !== menu) active.classList.remove('active');
+        menu.classList.toggle('active');
+    }
+    function setNoteColor(id, color) {
+        const note = notesData.find(n => n.id === id);
+        if(note) { note.color = color; saveData(); renderNotes(); }
+    }
+    let saveTimeout;
+    function saveDataDebounced() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveData, 500);
+    }
+
+    let activeDragNote = null, activeResizeNote = null;
+    let dragOffsetX = 0, dragOffsetY = 0;
+    let initialW = 0, initialH = 0, initialMouseX = 0, initialMouseY = 0;
+    const trashZone = document.getElementById('trash-dropzone');
+    const container = document.getElementById('right-panel');
+
+    function setupEventListeners() {
+        document.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        trashZone.addEventListener('click', () => toggleTrashModal(true));
+    }
+
+    function onMouseDown(e) {
+        if (!e.target.closest('.menu-trigger')) {
+             document.querySelectorAll('.note-menu-dropdown.active').forEach(m => m.classList.remove('active'));
+        }
+        if (e.target.closest('.header-btn')) return;
+
+        if (e.target.closest('.note-header') && !e.target.closest('.menu-trigger')) {
+            activeDragNote = e.target.closest('.note');
+            const noteRect = activeDragNote.getBoundingClientRect();
+            dragOffsetX = e.clientX - noteRect.left;
+            dragOffsetY = e.clientY - noteRect.top;
+            activeDragNote.classList.add('is-dragging');
+        } 
+        else if (e.target.classList.contains('resize-handle')) {
+            activeResizeNote = e.target.closest('.note');
+            const data = notesData.find(n => n.id === activeResizeNote.id);
+            initialMouseX = e.clientX; initialMouseY = e.clientY;
+            initialW = data.w; initialH = data.h;
+            e.preventDefault(); 
+        }
+    }
+
+    function onMouseMove(e) {
+        if (activeDragNote) {
+            e.preventDefault();
+            const containerRect = container.getBoundingClientRect();
+            let newX = e.clientX - containerRect.left - dragOffsetX;
+            let newY = e.clientY - containerRect.top - dragOffsetY;
+            activeDragNote.style.transform = `translate(${newX}px, ${newY}px)`;
+            const data = notesData.find(n => n.id === activeDragNote.id);
+            data.x = newX; data.y = newY;
+            
+            const noteRect = activeDragNote.getBoundingClientRect();
+            const trashRect = trashZone.getBoundingClientRect();
+            const overlaps = !(noteRect.right < trashRect.left || noteRect.left > trashRect.right || noteRect.bottom < trashRect.top || noteRect.top > trashRect.bottom);
+            trashZone.classList.toggle('drag-over', overlaps);
+        } 
+        else if (activeResizeNote) {
+            e.preventDefault();
+            const data = notesData.find(n => n.id === activeResizeNote.id);
+            const newW = Math.max(100, initialW + (e.clientX - initialMouseX));
+            const newH = Math.max(100, initialH + (e.clientY - initialMouseY));
+            activeResizeNote.style.width = newW + 'px';
+            activeResizeNote.style.height = newH + 'px';
+            data.w = newW; data.h = newH;
+        }
+    }
+
+    function onMouseUp(e) {
+        if (activeDragNote) {
+             const data = notesData.find(n => n.id === activeDragNote.id);
+             activeDragNote.classList.remove('is-dragging');
+             if(trashZone.classList.contains('drag-over')) {
+                 trashNote(data.id);
+                 trashZone.classList.remove('drag-over');
+             } else { saveData(); }
+             activeDragNote = null;
+        }
+        if (activeResizeNote) { activeResizeNote = null; saveData(); }
+    }
+
+    function trashNote(id) {
+        const note = notesData.find(n => n.id === id);
+        if(note) { note.status = 'trashed'; saveData(); renderNotes(); }
+    }
+    function toggleTrashModal(show) {
+        document.getElementById('trashModal').style.display = show ? 'flex' : 'none';
+        if(show) renderTrashList();
+    }
+    function renderTrashList() {
+        const container = document.getElementById('trashList');
+        const trashedNotes = notesData.filter(n => n.status === 'trashed');
+        container.innerHTML = '';
+        if(trashedNotes.length === 0) { container.innerHTML = '<p style="color: #999">Trash is empty.</p>'; return; }
+        trashedNotes.forEach(note => {
+            const div = document.createElement('div');
+            div.className = 'trashed-item';
+            div.innerHTML = `
+                <span style="border-left: 5px solid ${note.color}; padding-left: 10px;">${note.content.substring(0,30) || "Empty"}...</span>
+                <div class="trash-actions">
+                    <button onclick="restoreNote('${note.id}')">Restore</button>
+                    <button onclick="deleteForever('${note.id}')" style="color:var(--danger)">Del</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+    function restoreNote(id) {
+        const note = notesData.find(n => n.id === id);
+        if(note) { note.status = 'active'; saveData(); renderTrashList(); renderNotes(); }
+    }
+    function deleteForever(id) {
+        if(confirm("Gone forever?")) { notesData = notesData.filter(n => n.id !== id); saveData(); renderTrashList(); }
+    }
+    function emptyTrash() {
+        if(confirm("Delete all?")) { notesData = notesData.filter(n => n.status !== 'trashed'); saveData(); renderTrashList(); }
+    }
+
+    init();
+</script>
+</body>
+</html>
