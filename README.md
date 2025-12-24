@@ -22,6 +22,12 @@ To provide a **"Cognitive Accessibility"** focused experience. It prioritizes le
 
 ## 📖 Detailed Information
 
+### 🚀 Setup Guide
+
+1.  **Download:** Get the `index.html` file from this repository.
+2.  **Open:** Double-click the file to open it in your browser (Chrome, Edge, Firefox, Safari).
+3.  **Set as Homepage:** Go to your browser settings and set this file as your "On Startup" page. Now, your personal dashboard will load every time you open the internet.
+
 ### 🛠️ Feature Breakdown
 
 **1. Productivity Dashboard (Speed Dial)**
@@ -53,12 +59,6 @@ This application follows a strict **"Local-First"** security philosophy.
 - **External Requests:** The only time the page connects to the internet is to fetch anonymous public data:
   - _Google Favicons:_ To display website logos.
   - _Open-Meteo & Zippopotam.us:_ To fetch weather data based on a Zip Code (no personal identifiers are sent).
-
-### 🚀 Setup Guide
-
-1.  **Download:** Get the `index.html` file from this repository.
-2.  **Open:** Double-click the file to open it in your browser (Chrome, Edge, Firefox, Safari).
-3.  **Set as Homepage:** Go to your browser settings and set this file as your "On Startup" page. Now, your personal dashboard will load every time you open the internet.
 
 ---
 
